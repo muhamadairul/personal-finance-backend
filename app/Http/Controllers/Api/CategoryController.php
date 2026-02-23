@@ -29,6 +29,7 @@ class CategoryController extends Controller
         ]);
 
         $validated['user_id'] = $request->user()->id;
+        // dd($validated);
 
         $category = Category::create($validated);
 
