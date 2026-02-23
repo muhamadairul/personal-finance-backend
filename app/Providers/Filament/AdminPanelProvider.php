@@ -50,6 +50,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            // Mendaftarkan sidebar grup
+            ->navigationGroups([
+                'Master Data',
+                'Personal Finance',
+                'System'
             ]);
     }
 }
