@@ -42,6 +42,16 @@ class TransactionController extends Controller
         // Verify wallet belongs to user
         $wallet = $request->user()->wallets()->findOrFail($validated['wallet_id']);
 
+        // Validate sufficient balance for expense
+        if ($validated['type'] === 'expense' && $wallet->balance < $validated['amount']) {
+            return response()->json([
+                'message' => 'Saldo tidak mencukupi',
+                'errors' => [
+                    'amount' => ['Saldo dompet tidak mencukupi untuk transaksi ini. Saldo tersedia: Rp ' . number_format($wallet->balance, 0, ',', '.')],
+                ],
+            ], 422);
+        }
+
         $transaction = Transaction::create($validated);
 
         // Update wallet balance
@@ -94,6 +104,23 @@ class TransactionController extends Controller
 
         // Apply new balance
         $newWallet = $request->user()->wallets()->findOrFail($validated['wallet_id']);
+
+        // Validate sufficient balance for expense
+        if ($validated['type'] === 'expense' && $newWallet->balance < $validated['amount']) {
+            // Revert the old balance revert
+            if ($transaction->getOriginal('type') === 'income') {
+                $oldWallet->increment('balance', $transaction->getOriginal('amount'));
+            } else {
+                $oldWallet->decrement('balance', $transaction->getOriginal('amount'));
+            }
+            return response()->json([
+                'message' => 'Saldo tidak mencukupi',
+                'errors' => [
+                    'amount' => ['Saldo dompet tidak mencukupi untuk transaksi ini. Saldo tersedia: Rp ' . number_format($newWallet->balance, 0, ',', '.')],
+                ],
+            ], 422);
+        }
+
         if ($validated['type'] === 'income') {
             $newWallet->increment('balance', $validated['amount']);
         } else {

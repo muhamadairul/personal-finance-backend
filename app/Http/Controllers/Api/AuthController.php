@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -29,9 +30,10 @@ class AuthController extends Controller
 
         return response()->json([
             'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
             ],
             'token' => $token,
         ], 201);
@@ -55,9 +57,10 @@ class AuthController extends Controller
 
         return response()->json([
             'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
             ],
             'token' => $token,
         ]);
@@ -76,10 +79,61 @@ class AuthController extends Controller
 
         return response()->json([
             'data' => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
             ],
+        ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'data' => [
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
+            ],
+            'message' => 'Profil berhasil diperbarui',
+        ]);
+    }
+
+    public function uploadPhoto(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        $user = $request->user();
+
+        // Delete old photo if exists
+        if ($user->photo_url && Storage::disk('public')->exists($user->photo_url)) {
+            Storage::disk('public')->delete($user->photo_url);
+        }
+
+        // Store new photo in storage/app/public/profile-photos
+        $path = $request->file('photo')->store('profile-photos', 'public');
+
+        $user->update(['photo_url' => $path]);
+
+        return response()->json([
+            'data' => [
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'photo_url' => asset('storage/' . $path),
+            ],
+            'message' => 'Foto profil berhasil diperbarui',
         ]);
     }
 }

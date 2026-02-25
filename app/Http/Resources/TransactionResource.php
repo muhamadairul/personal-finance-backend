@@ -16,7 +16,7 @@ class TransactionResource extends JsonResource
             'category_id'    => $this->category_id,
             'wallet_id'      => $this->wallet_id,
             'note'           => $this->note,
-            'date'           => $this->date->format('Y-m-d'),
+            'date'           => $this->date->format('Y-m-d H:i:s'),
             'created_at'     => $this->created_at?->toISOString(),
             'category_name'  => $this->category?->name,
             'category_icon'  => $this->category?->icon,
