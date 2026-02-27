@@ -36,6 +36,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/category', [ReportController::class, 'category']);
 
     // Export
-    Route::get('/export/csv', [ExportController::class, 'csv']);
+    Route::get('/export/excel', [ExportController::class, 'excel']);
     Route::get('/export/pdf', [ExportController::class, 'pdf']);
 });
