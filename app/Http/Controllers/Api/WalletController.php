@@ -18,6 +18,17 @@ class WalletController extends Controller
 
     public function store(Request $request)
     {
+        // Free user: max 2 wallets
+        if (!$request->user()->isPro()) {
+            $walletCount = $request->user()->wallets()->count();
+            if ($walletCount >= 2) {
+                return response()->json([
+                    'message' => 'Pengguna gratis hanya bisa memiliki maksimal 2 dompet.',
+                    'upgrade_required' => true,
+                ], 403);
+            }
+        }
+
         $validated = $request->validate([
             'name'    => 'required|string|max:255',
             'type'    => 'required|in:cash,bank,ewallet',

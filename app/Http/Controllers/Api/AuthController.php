@@ -12,6 +12,21 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Helper to build user data array consistently.
+     */
+    private function userData(User $user, ?string $photoUrlOverride = null): array
+    {
+        return [
+            'id'                 => $user->id,
+            'name'               => $user->name,
+            'email'              => $user->email,
+            'photo_url'          => $photoUrlOverride ?? ($user->photo_url ? asset('storage/' . $user->photo_url) : null),
+            'is_pro'             => $user->isPro(),
+            'subscription_until' => $user->subscription_until?->toISOString(),
+        ];
+    }
+
     public function register(Request $request)
     {
         $request->validate([
@@ -29,12 +44,7 @@ class AuthController extends Controller
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
-            'user'  => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
-            ],
+            'user'  => $this->userData($user),
             'token' => $token,
         ], 201);
     }
@@ -56,12 +66,7 @@ class AuthController extends Controller
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
-            'user'  => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
-            ],
+            'user'  => $this->userData($user),
             'token' => $token,
         ]);
     }
@@ -78,12 +83,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'data' => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
-            ],
+            'data' => $this->userData($user),
         ]);
     }
 
@@ -98,12 +98,7 @@ class AuthController extends Controller
         $user->update($validated);
 
         return response()->json([
-            'data' => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'photo_url' => $user->photo_url ? asset('storage/' . $user->photo_url) : null,
-            ],
+            'data'    => $this->userData($user),
             'message' => 'Profil berhasil diperbarui',
         ]);
     }
@@ -127,12 +122,7 @@ class AuthController extends Controller
         $user->update(['photo_url' => $path]);
 
         return response()->json([
-            'data' => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'photo_url' => asset('storage/' . $path),
-            ],
+            'data'    => $this->userData($user, asset('storage/' . $path)),
             'message' => 'Foto profil berhasil diperbarui',
         ]);
     }

@@ -36,6 +36,18 @@ class UserResource extends Resource
                 ->required(fn(string $operation): bool => $operation === 'create')
                 ->dehydrated(fn(?string $state) => filled($state))
                 ->maxLength(255),
+            Forms\Components\Section::make('Subscription')
+                ->schema([
+                    Forms\Components\Toggle::make('is_pro')
+                        ->label('Status Pro')
+                        ->helperText('Aktifkan untuk memberikan akses fitur Pro kepada user ini.')
+                        ->default(false),
+                    Forms\Components\DateTimePicker::make('subscription_until')
+                        ->label('Berlaku Hingga')
+                        ->helperText('Kosongkan untuk Pro tanpa batas waktu.')
+                        ->nullable(),
+                ])
+                ->columns(2),
         ]);
     }
 
@@ -57,6 +69,15 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('transactions_count')
                     ->label('Transaksi')
                     ->counts('transactions')
+                    ->sortable(),
+                Tables\Columns\IconColumn::make('is_pro')
+                    ->label('Pro')
+                    ->boolean()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('subscription_until')
+                    ->label('Pro Hingga')
+                    ->dateTime('d M Y')
+                    ->placeholder('—')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Terdaftar')

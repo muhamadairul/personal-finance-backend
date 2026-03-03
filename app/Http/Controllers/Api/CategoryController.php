@@ -21,6 +21,14 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
+        // Free user: cannot add custom categories
+        if (!$request->user()->isPro()) {
+            return response()->json([
+                'message' => 'Pengguna gratis hanya bisa menggunakan kategori default.',
+                'upgrade_required' => true,
+            ], 403);
+        }
+
         $validated = $request->validate([
             'name'  => 'required|string|max:255',
             'icon'  => 'required|integer',

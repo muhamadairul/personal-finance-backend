@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [
             \App\Http\Middleware\ApiLogger::class,
         ]);
+        $middleware->alias([
+            'pro' => \App\Http\Middleware\CheckProStatus::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

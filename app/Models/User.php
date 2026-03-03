@@ -20,6 +20,8 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'photo_url',
+        'is_pro',
+        'subscription_until',
     ];
 
     protected $hidden = [
@@ -30,9 +32,29 @@ class User extends Authenticatable implements FilamentUser
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email_verified_at'  => 'datetime',
+            'password'           => 'hashed',
+            'is_pro'             => 'boolean',
+            'subscription_until' => 'datetime',
         ];
+    }
+
+    /**
+     * Check if user has active Pro subscription.
+     */
+    public function isPro(): bool
+    {
+        if (!$this->is_pro) {
+            return false;
+        }
+
+        // If subscription_until is set, check if it's still valid
+        if ($this->subscription_until !== null) {
+            return $this->subscription_until->isFuture();
+        }
+
+        // is_pro = true and no expiry → lifetime/manual pro
+        return true;
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -58,5 +80,10 @@ class User extends Authenticatable implements FilamentUser
     public function budgets(): HasMany
     {
         return $this->hasMany(Budget::class);
+    }
+
+    public function subscriptionLogs(): HasMany
+    {
+        return $this->hasMany(SubscriptionLog::class);
     }
 }

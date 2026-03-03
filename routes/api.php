@@ -35,7 +35,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/monthly', [ReportController::class, 'monthly']);
     Route::get('/reports/category', [ReportController::class, 'category']);
 
-    // Export
-    Route::get('/export/excel', [ExportController::class, 'excel']);
-    Route::get('/export/pdf', [ExportController::class, 'pdf']);
+    // Export (Pro only)
+    Route::middleware('pro')->group(function () {
+        Route::get('/export/excel', [ExportController::class, 'excel']);
+        Route::get('/export/pdf', [ExportController::class, 'pdf']);
+    });
 });
