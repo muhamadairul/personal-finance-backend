@@ -22,6 +22,10 @@ class AuthController extends Controller
             'name'               => $user->name,
             'email'              => $user->email,
             'photo_url'          => $photoUrlOverride ?? ($user->photo_url ? asset('storage/' . $user->photo_url) : null),
+            'phone'              => $user->phone,
+            'address'            => $user->address,
+            'date_of_birth'      => $user->date_of_birth?->toDateString(),
+            'gender'             => $user->gender,
             'is_pro'             => $user->isPro(),
             'subscription_until' => $user->subscription_until?->toISOString(),
         ];
@@ -92,7 +96,11 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'          => 'required|string|max:255',
+            'phone'         => 'nullable|string|max:20',
+            'address'       => 'nullable|string|max:500',
+            'date_of_birth' => 'nullable|date',
+            'gender'        => 'nullable|in:L,P',
         ]);
 
         $user->update($validated);
@@ -124,6 +132,22 @@ class AuthController extends Controller
         return response()->json([
             'data'    => $this->userData($user, asset('storage/' . $path)),
             'message' => 'Foto profil berhasil diperbarui',
+        ]);
+    }
+
+    public function deletePhoto(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->photo_url && Storage::disk('public')->exists($user->photo_url)) {
+            Storage::disk('public')->delete($user->photo_url);
+        }
+
+        $user->update(['photo_url' => null]);
+
+        return response()->json([
+            'data'    => $this->userData($user),
+            'message' => 'Foto profil berhasil dihapus',
         ]);
     }
 }

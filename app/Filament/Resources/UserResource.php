@@ -48,6 +48,25 @@ class UserResource extends Resource
                         ->nullable(),
                 ])
                 ->columns(2),
+            Forms\Components\Section::make('Detail Profil')
+                ->schema([
+                    Forms\Components\TextInput::make('phone')
+                        ->label('Telepon')
+                        ->tel()
+                        ->maxLength(20),
+                    Forms\Components\Select::make('gender')
+                        ->label('Jenis Kelamin')
+                        ->options([
+                            'L' => 'Laki-laki',
+                            'P' => 'Perempuan',
+                        ]),
+                    Forms\Components\DatePicker::make('date_of_birth')
+                        ->label('Tanggal Lahir'),
+                    Forms\Components\Textarea::make('address')
+                        ->label('Alamat')
+                        ->columnSpanFull(),
+                ])
+                ->columns(2),
         ]);
     }
 
