@@ -7,15 +7,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Change date column from DATE to TIMESTAMP using PostgreSQL syntax
-        DB::statement('ALTER TABLE transactions ALTER COLUMN date TYPE TIMESTAMP USING date::timestamp');
+        // Change date column from DATE to DATETIME using MySQL syntax
+        DB::statement('ALTER TABLE transactions MODIFY COLUMN `date` DATETIME NULL');
 
         // Migrate existing data: set time from created_at
-        DB::statement('UPDATE transactions SET date = (date::date || \' \' || created_at::time)::timestamp WHERE created_at IS NOT NULL');
+        DB::statement('UPDATE transactions SET `date` = CONCAT(DATE(`date`), \' \', TIME(created_at)) WHERE created_at IS NOT NULL');
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE transactions ALTER COLUMN date TYPE DATE USING date::date');
+        DB::statement('ALTER TABLE transactions MODIFY COLUMN `date` DATE NULL');
     }
 };
