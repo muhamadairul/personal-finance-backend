@@ -3,7 +3,7 @@ FROM php:8.4-cli
 RUN apt-get update && apt-get install -y \
     git unzip libzip-dev libicu-dev libpng-dev
 
-RUN docker-php-ext-install intl zip gd pdo_mysql pdo_pgsql pgsql
+RUN docker-php-ext-install intl zip gd pdo_pgsql pgsql
 
 WORKDIR /app
 
