@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\SubscriptionLog;
+use App\Observers\SubscriptionLogObserver;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,5 +25,7 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }
+
+        SubscriptionLog::observe(SubscriptionLogObserver::class);
     }
 }

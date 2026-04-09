@@ -6,13 +6,18 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\XenditWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Xendit Webhook (public — verified via x-callback-token header)
+Route::post('/webhooks/xendit/invoice', [XenditWebhookController::class, 'handleInvoice']);
 
 // Protected routes (Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
@@ -40,5 +45,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('pro')->group(function () {
         Route::get('/export/excel', [ExportController::class, 'excel']);
         Route::get('/export/pdf', [ExportController::class, 'pdf']);
+    });
+
+    // Subscription
+    Route::prefix('subscription')->group(function () {
+        Route::get('/plans', [SubscriptionController::class, 'plans']);
+        Route::get('/status', [SubscriptionController::class, 'status']);
+        Route::post('/create-invoice', [SubscriptionController::class, 'createInvoice']);
+        Route::get('/history', [SubscriptionController::class, 'history']);
     });
 });

@@ -10,6 +10,12 @@ class SubscriptionLog extends Model
     protected $fillable = [
         'user_id',
         'type',
+        'xendit_invoice_id',
+        'xendit_invoice_url',
+        'payment_method',
+        'payment_channel',
+        'status',
+        'plan_id',
         'amount',
         'starts_at',
         'ends_at',

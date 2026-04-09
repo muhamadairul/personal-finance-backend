@@ -35,11 +35,30 @@ class SubscriptionLogResource extends Resource
                     'trial'   => 'Trial',
                 ])
                 ->required(),
+            Forms\Components\Select::make('plan_id')
+                ->label('Paket')
+                ->options([
+                    'monthly' => 'Bulanan (Rp 15.000)',
+                    'yearly'  => 'Tahunan (Rp 150.000)',
+                ]),
+            Forms\Components\Select::make('status')
+                ->label('Status')
+                ->options([
+                    'pending' => 'Pending',
+                    'paid'    => 'Paid',
+                    'expired' => 'Expired',
+                    'failed'  => 'Failed',
+                ])
+                ->default('paid')
+                ->required(),
             Forms\Components\TextInput::make('amount')
                 ->label('Jumlah (Rp)')
                 ->numeric()
                 ->prefix('Rp')
                 ->default(0),
+            Forms\Components\TextInput::make('payment_channel')
+                ->label('Channel Pembayaran')
+                ->placeholder('e.g. QRIS, BCA, OVO'),
             Forms\Components\DateTimePicker::make('starts_at')
                 ->label('Mulai')
                 ->required()
@@ -72,10 +91,36 @@ class SubscriptionLogResource extends Resource
                         'trial'   => 'info',
                         default   => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('plan_id')
+                    ->label('Paket')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => match ($state) {
+                        'monthly' => 'Bulanan',
+                        'yearly'  => 'Tahunan',
+                        default   => $state ?? '-',
+                    })
+                    ->color(fn($state) => match ($state) {
+                        'yearly'  => 'success',
+                        'monthly' => 'info',
+                        default   => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Jumlah')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('payment_channel')
+                    ->label('Channel')
+                    ->placeholder('-'),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'paid'    => 'success',
+                        'pending' => 'warning',
+                        'expired' => 'danger',
+                        'failed'  => 'danger',
+                        default   => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('starts_at')
                     ->label('Mulai')
                     ->dateTime('d M Y')
@@ -89,7 +134,29 @@ class SubscriptionLogResource extends Resource
                     ->dateTime('d M Y H:i')
                     ->sortable(),
             ])
-            ->filters([])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'paid'    => 'Paid',
+                        'expired' => 'Expired',
+                        'failed'  => 'Failed',
+                    ]),
+                Tables\Filters\SelectFilter::make('type')
+                    ->label('Tipe')
+                    ->options([
+                        'manual'  => 'Manual',
+                        'payment' => 'Payment Gateway',
+                        'trial'   => 'Trial',
+                    ]),
+                Tables\Filters\SelectFilter::make('plan_id')
+                    ->label('Paket')
+                    ->options([
+                        'monthly' => 'Bulanan',
+                        'yearly'  => 'Tahunan',
+                    ]),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
