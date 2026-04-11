@@ -2,55 +2,129 @@
 
 namespace App\Services;
 
-use Xendit\Configuration;
-use Xendit\Invoice\InvoiceApi;
-use Xendit\Invoice\CreateInvoiceRequest;
+use GuzzleHttp\Client;
 
 class XenditService
 {
-    private InvoiceApi $invoiceApi;
+    private Client $client;
 
     public function __construct()
     {
-        Configuration::setXenditKey(config('services.xendit.secret_key'));
-        $this->invoiceApi = new InvoiceApi();
+        $this->client = new Client();
     }
 
     /**
-     * Create a Xendit Invoice for subscription payment.
-     *
-     * Returns the Invoice object with getInvoiceUrl() and getId().
+     * Create QRIS payment via Payment Request API.
+     * Returns full response containing qr_string.
      */
-    public function createInvoice(
-        string $externalId,
-        int    $amount,
-        string $description,
-        string $payerEmail,
-        array  $metadata = [],
-    ): object {
-        $request = new CreateInvoiceRequest([
-            'external_id'      => $externalId,
-            'amount'           => $amount,
-            'description'      => $description,
-            'payer_email'      => $payerEmail,
-            'invoice_duration' => config('subscription.invoice_duration', 86400),
-            'currency'         => 'IDR',
-            'payment_methods'  => [
-                'BCA', 'BNI', 'BRI', 'MANDIRI', 'PERMATA',
-                'OVO', 'DANA', 'SHOPEEPAY', 'LINKAJA',
-                'QRIS',
+    public function createQrisPayment(string $referenceId, float $amount): array
+    {
+        $payload = [
+            'reference_id' => $referenceId,
+            'currency'     => 'IDR',
+            'country'      => 'ID',
+            'amount'       => $amount,
+            'payment_method' => [
+                'reference_id' => $referenceId,
+                'type'         => 'QR_CODE',
+                'reusability'  => 'ONE_TIME_USE',
+                'qr_code'      => [
+                    'channel_code'       => 'QRIS',
+                    'channel_properties' => [
+                        'qr_code_generator' => 'INTEGRATED',
+                    ],
+                ],
             ],
-            'metadata' => $metadata,
+            'checkout_method' => 'ONE_TIME_PAYMENT',
+        ];
+
+        return $this->sendPaymentRequest($payload);
+    }
+
+    /**
+     * Create Virtual Account payment via Payment Request API.
+     * Returns full response containing va_number.
+     */
+    public function createVaPayment(
+        string $referenceId,
+        float  $amount,
+        string $channelCode,
+        string $customerName,
+    ): array {
+        $expiresAt = now()->addHours(24)->toIso8601String();
+
+        $payload = [
+            'reference_id' => $referenceId,
+            'currency'     => 'IDR',
+            'country'      => 'ID',
+            'amount'       => $amount,
+            'payment_method' => [
+                'type'         => 'VIRTUAL_ACCOUNT',
+                'reusability'  => 'ONE_TIME_USE',
+                'reference_id' => $referenceId,
+                'virtual_account' => [
+                    'channel_code'       => $channelCode,
+                    'channel_properties' => [
+                        'customer_name' => $customerName,
+                        'expires_at'    => $expiresAt,
+                    ],
+                ],
+            ],
+            'checkout_method' => 'ONE_TIME_PAYMENT',
+            'metadata' => [
+                'source' => 'subscription',
+            ],
+        ];
+
+        return $this->sendPaymentRequest($payload);
+    }
+
+    /**
+     * Create E-Wallet payment via Payment Request API.
+     * Returns full response containing actions URL for deeplink.
+     */
+    public function createEwalletPayment(
+        string $referenceId,
+        float  $amount,
+        string $channelCode,
+    ): array {
+        $payload = [
+            'reference_id' => $referenceId,
+            'currency'     => 'IDR',
+            'country'      => 'ID',
+            'amount'       => $amount,
+            'payment_method' => [
+                'type'         => 'EWALLET',
+                'reusability'  => 'ONE_TIME_USE',
+                'reference_id' => $referenceId,
+                'ewallet'      => [
+                    'channel_code'       => $channelCode,
+                    'channel_properties' => [
+                        'success_return_url' => config('app.url') . '/payment/success',
+                        'failure_return_url' => config('app.url') . '/payment/failed',
+                    ],
+                ],
+            ],
+            'checkout_method' => 'ONE_TIME_PAYMENT',
+        ];
+
+        return $this->sendPaymentRequest($payload);
+    }
+
+    /**
+     * Send payment request to Xendit API.
+     */
+    private function sendPaymentRequest(array $payload): array
+    {
+        $response = $this->client->post('https://api.xendit.co/payment_requests', [
+            'auth'    => [config('services.xendit.secret_key'), ''],
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+            ],
+            'json' => $payload,
         ]);
 
-        return $this->invoiceApi->createInvoice($request);
-    }
-
-    /**
-     * Get invoice detail by Xendit Invoice ID.
-     */
-    public function getInvoice(string $invoiceId): object
-    {
-        return $this->invoiceApi->getInvoiceById($invoiceId);
+        return json_decode($response->getBody(), true);
     }
 }

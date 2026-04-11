@@ -51,7 +51,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('subscription')->group(function () {
         Route::get('/plans', [SubscriptionController::class, 'plans']);
         Route::get('/status', [SubscriptionController::class, 'status']);
-        Route::post('/create-invoice', [SubscriptionController::class, 'createInvoice']);
+        Route::post('/pay/qris', [SubscriptionController::class, 'payQris']);
+        Route::post('/pay/va', [SubscriptionController::class, 'payVa']);
+        Route::post('/pay/ewallet', [SubscriptionController::class, 'payEwallet']);
+        Route::get('/check/{id}', [SubscriptionController::class, 'checkStatus']);
         Route::get('/history', [SubscriptionController::class, 'history']);
     });
 });

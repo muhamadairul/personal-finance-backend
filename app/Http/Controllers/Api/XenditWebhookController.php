@@ -7,55 +7,77 @@ use App\Models\SubscriptionLog;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class XenditWebhookController extends Controller
 {
     /**
-     * Handle Xendit Invoice webhook callback.
+     * Handle Xendit Payment Request webhook callback.
      * POST /api/webhooks/xendit/invoice
      *
-     * This endpoint is called by Xendit when an invoice status changes
-     * (PAID, EXPIRED, FAILED). It verifies the callback token, finds
-     * the matching subscription log, and updates statuses accordingly.
+     * Uses the event/data structure from Payment Request API
+     * (same pattern as Kafee project).
      */
     public function handleInvoice(Request $request)
     {
-        // 1. Verify x-callback-token
+        // 1. Verify x-callback-token (if configured)
         $callbackToken = $request->header('x-callback-token');
         $expectedToken = config('services.xendit.webhook_token');
 
-        // If webhook token is configured, verify it
         if ($expectedToken && (!$callbackToken || !hash_equals($expectedToken, $callbackToken))) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $payload   = $request->all();
-        $status    = $payload['status'] ?? null;
-        $invoiceId = $payload['id'] ?? null;
+        $event       = $request->input('event');
+        $data        = $request->input('data');
+        $referenceId = $data['reference_id'] ?? null;
+        $status      = strtoupper($data['status'] ?? '');
+        $paymentId   = $data['id'] ?? null;
 
-        if (!$invoiceId) {
-            return response()->json(['message' => 'Missing invoice ID'], 400);
+        Log::info('Xendit Webhook', compact('event', 'status', 'referenceId', 'paymentId'));
+
+        if (!$referenceId || !$status) {
+            return response()->json(['message' => 'Invalid payload'], 400);
         }
 
         // 2. Find matching subscription log
-        $log = SubscriptionLog::where('xendit_invoice_id', $invoiceId)->first();
+        $log = SubscriptionLog::where('xendit_invoice_id', $paymentId)->first();
 
+        // Fallback: search by reference_id stored in xendit_invoice_id
         if (!$log) {
-            return response()->json(['message' => 'Invoice not found'], 404);
+            $log = SubscriptionLog::where('xendit_invoice_id', $referenceId)->first();
         }
 
-        // 3. Idempotency check — don't re-process already paid invoices
+        if (!$log) {
+            Log::warning("Webhook: Subscription log not found", compact('referenceId', 'paymentId'));
+            return response()->json(['message' => 'Subscription not found'], 404);
+        }
+
+        // 3. Idempotency check
         if ($log->status === 'paid') {
             return response()->json(['message' => 'Already processed'], 200);
         }
 
-        // 4. Handle status changes
-        if ($status === 'PAID') {
-            $this->handlePaid($log, $payload);
-        } elseif (in_array($status, ['EXPIRED', 'FAILED'])) {
+        // 4. Map statuses (Kafee pattern)
+        $statusMap = [
+            'SUCCEEDED' => 'paid',
+            'FAILED'    => 'failed',
+            'EXPIRED'   => 'expired',
+        ];
+
+        $newStatus = $statusMap[$status] ?? null;
+
+        if (!$newStatus) {
+            return response()->json(['message' => 'Unhandled status'], 200);
+        }
+
+        // 5. Handle payment
+        if ($newStatus === 'paid') {
+            $this->handlePaid($log, $data);
+        } else {
             $log->update([
-                'status' => strtolower($status),
-                'notes'  => "Invoice {$status}",
+                'status' => $newStatus,
+                'notes'  => "Payment {$status}",
             ]);
         }
 
@@ -63,34 +85,43 @@ class XenditWebhookController extends Controller
     }
 
     /**
-     * Handle a successful payment.
+     * Handle successful payment.
      */
-    private function handlePaid(SubscriptionLog $log, array $payload): void
+    private function handlePaid(SubscriptionLog $log, array $data): void
     {
         $user = $log->user;
         $plan = config("subscription.plans.{$log->plan_id}");
         $durationDays = $plan['duration_days'] ?? 30;
 
-        // Calculate starts_at & ends_at — stack on top of existing subscription
+        // Stack on top of existing active subscription
         $currentEnd = $user->subscription_until;
         $startsAt   = ($currentEnd && $currentEnd->isFuture()) ? $currentEnd : now();
         $endsAt     = $startsAt->copy()->addDays($durationDays);
 
-        $paymentChannel = $payload['payment_channel'] ?? $payload['payment_method'] ?? 'unknown';
+        // Extract payment details from webhook (Kafee pattern)
+        $pm = $data['payment_method'] ?? [];
+        $channel = $log->payment_channel;
+
+        if (isset($pm['virtual_account'])) {
+            $channel = $pm['virtual_account']['channel_code'] ?? $channel;
+        } elseif (isset($pm['qr_code'])) {
+            $channel = 'QRIS';
+        } elseif (isset($pm['ewallet'])) {
+            $channel = $pm['ewallet']['channel_code'] ?? $channel;
+        }
 
         $log->update([
             'status'          => 'paid',
-            'payment_method'  => $payload['payment_method'] ?? null,
-            'payment_channel' => $paymentChannel,
+            'payment_channel' => $channel,
             'starts_at'       => $startsAt,
             'ends_at'         => $endsAt,
-            'notes'           => "Paid via Xendit — {$paymentChannel}",
+            'notes'           => "Paid via Xendit — {$channel}",
         ]);
 
         // Observer will auto-sync user is_pro & subscription_until
 
-        // Send notification to admin(s) in Filament
-        $this->notifyAdmins($user, $plan, $paymentChannel);
+        // Notify admin(s)
+        $this->notifyAdmins($user, $plan, $channel);
     }
 
     /**
@@ -100,8 +131,6 @@ class XenditWebhookController extends Controller
     {
         try {
             $planName = $plan['name'] ?? 'Pro';
-
-            // Notify all users (admins) — in a real app you might filter by role
             $admins = User::all();
 
             Notification::make()
@@ -110,7 +139,6 @@ class XenditWebhookController extends Controller
                 ->success()
                 ->sendToDatabase($admins);
         } catch (\Exception $e) {
-            // Silently fail — notification is not critical
             report($e);
         }
     }
