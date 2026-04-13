@@ -13,11 +13,15 @@ class ReportController extends Controller
     /**
      * GET /api/reports/monthly
      * Returns income/expense trends for the last 6 months.
+     * Optional query params: month, year (will center the 6-month window ending at that month).
      */
     public function monthly(Request $request)
     {
         $user = $request->user();
-        $now  = Carbon::now();
+
+        $month = (int) $request->get('month', now()->month);
+        $year  = (int) $request->get('year', now()->year);
+        $now   = Carbon::create($year, $month, 1);
 
         $monthlyIncome  = [];
         $monthlyExpense = [];
@@ -58,17 +62,20 @@ class ReportController extends Controller
 
     /**
      * GET /api/reports/category
-     * Returns expense breakdown by category for the current month.
+     * Returns expense breakdown by category for the specified month.
+     * Optional query params: month, year.
      */
     public function category(Request $request)
     {
         $user = $request->user();
-        $now  = Carbon::now();
+
+        $month = (int) $request->get('month', now()->month);
+        $year  = (int) $request->get('year', now()->year);
 
         $transactions = Transaction::where('user_id', $user->id)
             ->where('type', 'expense')
-            ->whereMonth('date', $now->month)
-            ->whereYear('date', $now->year)
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
             ->with('category')
             ->get();
 
@@ -87,8 +94,8 @@ class ReportController extends Controller
         arsort($breakdown);
 
         return response()->json([
-            'category_breakdown' => $breakdown,
-            'category_colors'    => $colors,
+            'category_breakdown' => empty($breakdown) ? (object) [] : $breakdown,
+            'category_colors'    => empty($colors)    ? (object) [] : $colors,
         ]);
     }
 }

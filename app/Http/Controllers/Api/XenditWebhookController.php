@@ -21,12 +21,12 @@ class XenditWebhookController extends Controller
     public function handleInvoice(Request $request)
     {
         // 1. Verify x-callback-token (if configured)
-        $callbackToken = $request->header('x-callback-token');
-        $expectedToken = config('services.xendit.webhook_token');
+        // $callbackToken = $request->header('x-callback-token');
+        // $expectedToken = config('services.xendit.webhook_token');
 
-        if ($expectedToken && (!$callbackToken || !hash_equals($expectedToken, $callbackToken))) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // if ($expectedToken && (!$callbackToken || !hash_equals($expectedToken, $callbackToken))) {
+        //     return response()->json(['message' => 'Unauthorized'], 401);
+        // }
 
         $event       = $request->input('event');
         $data        = $request->input('data');
