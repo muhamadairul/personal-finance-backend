@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionLog;
 use App\Models\User;
+use App\Services\FcmService;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -125,19 +126,35 @@ class XenditWebhookController extends Controller
     }
 
     /**
-     * Send Filament database notification to all admin users.
+     * Send Filament database notification + FCM push to admin users.
      */
     private function notifyAdmins(User $user, ?array $plan, string $channel): void
     {
         try {
             $planName = $plan['name'] ?? 'Pro';
-            $admins = User::all();
+            $admins = User::where('is_admin', true)->get();
 
+            if ($admins->isEmpty()) {
+                return;
+            }
+
+            // 1. Filament Database Notification (visible in admin panel bell icon)
             Notification::make()
                 ->title('🎉 Upgrade Pro Berhasil')
                 ->body("{$user->name} berhasil upgrade ke paket {$planName} via {$channel}")
                 ->success()
                 ->sendToDatabase($admins);
+
+            // 2. FCM Push Notification to admin devices
+            $fcmService = app(FcmService::class);
+            foreach ($admins->whereNotNull('fcm_token') as $admin) {
+                $fcmService->sendToDevice(
+                    $admin->fcm_token,
+                    '🎉 Upgrade Pro Berhasil',
+                    "{$user->name} berhasil upgrade ke paket {$planName} via {$channel}",
+                    ['type' => 'admin_subscription_paid'],
+                );
+            }
         } catch (\Exception $e) {
             report($e);
         }

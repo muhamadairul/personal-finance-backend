@@ -12,3 +12,9 @@ Artisan::command('inspire', function () {
 Schedule::call(function () {
     \App\Models\ApiLog::where('created_at', '<', now()->subDays(30))->delete();
 })->daily()->name('cleanup-api-logs');
+
+// Push notification: remind users who haven't recorded transactions today
+Schedule::command('app:send-transaction-reminder')->dailyAt('20:00')->name('transaction-reminder');
+
+// Push notification: warn users whose subscription is expiring soon
+Schedule::command('app:send-subscription-expiry-reminder')->dailyAt('09:00')->name('subscription-expiry-reminder');

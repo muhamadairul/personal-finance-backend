@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/auth/social', [AuthController::class, 'socialLogin']);
 
 // Xendit Webhook (public — verified via x-callback-token header)
 Route::post('/webhooks/xendit/invoice', [XenditWebhookController::class, 'handleInvoice']);
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/profile', [AuthController::class, 'updateProfile']);
     Route::post('/user/photo', [AuthController::class, 'uploadPhoto']);
     Route::delete('/user/photo', [AuthController::class, 'deletePhoto']);
+    Route::post('/user/fcm-token', [AuthController::class, 'updateFcmToken']);
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);

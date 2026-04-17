@@ -19,6 +19,8 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
+        'provider',
+        'provider_id',
         'photo_url',
         'phone',
         'address',
@@ -26,6 +28,8 @@ class User extends Authenticatable implements FilamentUser
         'gender',
         'is_pro',
         'subscription_until',
+        'fcm_token',
+        'is_admin',
     ];
 
     protected $hidden = [
@@ -40,6 +44,7 @@ class User extends Authenticatable implements FilamentUser
             'password'           => 'hashed',
             'date_of_birth'      => 'date',
             'is_pro'             => 'boolean',
+            'is_admin'           => 'boolean',
             'subscription_until' => 'datetime',
         ];
     }
@@ -64,7 +69,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return true; // All users can access admin panel for now
+        return $this->is_admin;
     }
 
     public function wallets(): HasMany

@@ -40,4 +40,15 @@ return [
         'webhook_token' => env('XENDIT_WEBHOOK_TOKEN'),
     ],
 
+    'google' => [
+        'client_id'         => env('GOOGLE_CLIENT_ID'),
+        'client_secret'     => env('GOOGLE_CLIENT_SECRET'),
+        'client_id_android' => env('GOOGLE_CLIENT_ID_ANDROID'),
+    ],
+
+    'firebase' => [
+        'project_id'  => env('FIREBASE_PROJECT_ID'),
+        'credentials' => base_path(env('FIREBASE_CREDENTIALS', 'storage/app/firebase/service-account.json')),
+    ],
+
 ];
