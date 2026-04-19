@@ -17,13 +17,39 @@ class AuthController extends Controller
     /**
      * Helper to build user data array consistently.
      */
+    /**
+     * Get the configured storage disk name for profile photos.
+     */
+    private function photoDisk(): string
+    {
+        return config('app.env') === 'production' ? 'supabase' : 'public';
+    }
+
+    /**
+     * Build the public URL for a user's photo.
+     */
+    private function photoUrl(?string $photoPath): ?string
+    {
+        if (!$photoPath) {
+            return null;
+        }
+
+        // If it's already a full URL (cloud storage), return directly
+        if (str_starts_with($photoPath, 'http')) {
+            return $photoPath;
+        }
+
+        // Local storage
+        return asset('storage/' . $photoPath);
+    }
+
     private function userData(User $user, ?string $photoUrlOverride = null): array
     {
         return [
             'id'                 => $user->id,
             'name'               => $user->name,
             'email'              => $user->email,
-            'photo_url'          => $photoUrlOverride ?? ($user->photo_url ? asset('storage/' . $user->photo_url) : null),
+            'photo_url'          => $photoUrlOverride ?? $this->photoUrl($user->photo_url),
             'phone'              => $user->phone,
             'address'            => $user->address,
             'date_of_birth'      => $user->date_of_birth?->toDateString(),
@@ -263,19 +289,46 @@ class AuthController extends Controller
         ]);
 
         $user = $request->user();
+        $disk = $this->photoDisk();
 
         // Delete old photo if exists
-        if ($user->photo_url && Storage::disk('public')->exists($user->photo_url)) {
-            Storage::disk('public')->delete($user->photo_url);
+        if ($user->photo_url) {
+            $oldPath = $user->photo_url;
+            // If it's a full URL (Supabase), extract just the path portion
+            if (str_starts_with($oldPath, 'http')) {
+                $oldPath = parse_url($oldPath, PHP_URL_PATH);
+                // Extract path after /object/public/{bucket}/
+                $bucket = config('filesystems.disks.supabase.bucket', 'profiles');
+                $pos = strpos($oldPath, $bucket . '/');
+                if ($pos !== false) {
+                    $oldPath = substr($oldPath, $pos + strlen($bucket) + 1);
+                }
+            }
+            try {
+                Storage::disk($disk)->delete($oldPath);
+            } catch (\Exception $e) {
+                // Ignore delete failures (file may not exist)
+            }
         }
 
-        // Store new photo in storage/app/public/profile-photos
-        $path = $request->file('photo')->store('profile-photos', 'public');
+        // Store new photo
+        $path = $request->file('photo')->store('profile-photos', $disk);
 
-        $user->update(['photo_url' => $path]);
+        // Build the public URL
+        if ($disk === 'supabase') {
+            $bucket = config('filesystems.disks.supabase.bucket', 'profiles');
+            $supabaseUrl = rtrim(config('filesystems.disks.supabase.endpoint'), '/s3');
+            $supabaseUrl = str_replace('/storage/v1/s3', '', $supabaseUrl);
+            $baseUrl = rtrim(env('SUPABASE_URL'), '/');
+            $publicUrl = "{$baseUrl}/storage/v1/object/public/{$bucket}/{$path}";
+            $user->update(['photo_url' => $publicUrl]);
+        } else {
+            $user->update(['photo_url' => $path]);
+            $publicUrl = asset('storage/' . $path);
+        }
 
         return response()->json([
-            'data'    => $this->userData($user, asset('storage/' . $path)),
+            'data'    => $this->userData($user, $publicUrl),
             'message' => 'Foto profil berhasil diperbarui',
         ]);
     }
@@ -283,9 +336,22 @@ class AuthController extends Controller
     public function deletePhoto(Request $request)
     {
         $user = $request->user();
+        $disk = $this->photoDisk();
 
-        if ($user->photo_url && Storage::disk('public')->exists($user->photo_url)) {
-            Storage::disk('public')->delete($user->photo_url);
+        if ($user->photo_url) {
+            $oldPath = $user->photo_url;
+            if (str_starts_with($oldPath, 'http')) {
+                $bucket = config('filesystems.disks.supabase.bucket', 'profiles');
+                $pos = strpos($oldPath, $bucket . '/');
+                if ($pos !== false) {
+                    $oldPath = substr($oldPath, $pos + strlen($bucket) + 1);
+                }
+            }
+            try {
+                Storage::disk($disk)->delete($oldPath);
+            } catch (\Exception $e) {
+                // Ignore
+            }
         }
 
         $user->update(['photo_url' => null]);

@@ -10,12 +10,26 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\Api\XenditWebhookController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/social', [AuthController::class, 'socialLogin']);
+
+// Vercel Cron trigger (secured by secret key)
+Route::get('/cron/trigger', function (Request $request) {
+    $secret = config('app.cron_secret');
+    if (!$secret || $request->query('key') !== $secret) {
+        return response()->json(['message' => 'Unauthorized'], 401);
+    }
+    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+    return response()->json([
+        'message' => 'Schedule executed',
+        'output'  => \Illuminate\Support\Facades\Artisan::output(),
+    ]);
+});
 
 // Xendit Webhook (public — verified via x-callback-token header)
 Route::post('/webhooks/xendit/invoice', [XenditWebhookController::class, 'handleInvoice']);

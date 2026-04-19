@@ -14,7 +14,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // On Vercel (serverless), override storage path to /tmp
+        // since the default storage/ directory is read-only
+        if (isset($_ENV['APP_STORAGE'])) {
+            $this->app->useStoragePath($_ENV['APP_STORAGE']);
+        }
     }
 
     /**

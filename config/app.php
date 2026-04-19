@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Vercel Cron Secret
+    |--------------------------------------------------------------------------
+    |
+    | This secret is used to authenticate Vercel Cron requests to the
+    | /api/cron/trigger endpoint. Set a strong random string.
+    |
+    */
+
+    'cron_secret' => env('CRON_SECRET'),
+
 ];
