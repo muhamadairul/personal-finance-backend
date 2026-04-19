@@ -8,14 +8,14 @@ return new class extends Migration
     public function up(): void
     {
         // Change date column from DATE to DATETIME using MySQL syntax
-        DB::statement('ALTER TABLE transactions ALTER COLUMN date TYPE TIMESTAMP USING date::timestamp');
+        DB::statement('ALTER TABLE transactions MODIFY COLUMN date DATETIME');
         
-        // Migrate existing data: set time from created_at
-        DB::statement('UPDATE transactions SET date = (date::date || \' \' || created_at::time)::timestamp WHERE created_at IS NOT NULL');
+        // Migrate existing data: set time from created_at in MySQL
+        DB::statement("UPDATE transactions SET date = CAST(CONCAT(DATE(date), ' ', TIME(created_at)) AS DATETIME) WHERE created_at IS NOT NULL");
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE transactions ALTER COLUMN date TYPE DATE USING date::date');
+        DB::statement('ALTER TABLE transactions MODIFY COLUMN date DATE');
     }
 };
