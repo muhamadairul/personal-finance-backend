@@ -18,7 +18,7 @@ class ApiHitsChartWidget extends ChartWidget
         $hours = collect(range(23, 0))->map(fn($i) => Carbon::now()->subHours($i)->startOfHour());
 
         $hits = ApiLog::where('created_at', '>=', Carbon::now()->subHours(24))
-            ->select(DB::raw('EXTRACT(HOUR FROM created_at)::int as hour'), DB::raw('created_at::date as log_date'), DB::raw('COUNT(*) as total'))
+            ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('DATE(created_at) as log_date'), DB::raw('COUNT(*) as total'))
             ->groupBy('log_date', 'hour')
             ->get()
             ->keyBy(fn($item) => $item->log_date . '-' . $item->hour);

@@ -13,7 +13,7 @@ class PeakHoursChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $hourly = Transaction::select(DB::raw('EXTRACT(HOUR FROM created_at)::int as hour'), DB::raw('COUNT(*) as total'))
+        $hourly = Transaction::select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as total'))
             ->where('created_at', '>=', now()->subDays(30))
             ->groupBy('hour')
             ->orderBy('hour')

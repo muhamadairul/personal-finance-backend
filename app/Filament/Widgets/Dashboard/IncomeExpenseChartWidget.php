@@ -18,16 +18,16 @@ class IncomeExpenseChartWidget extends ChartWidget
 
         $incomes = Transaction::where('type', 'income')
             ->where('date', '>=', Carbon::today()->subDays(29))
-            ->selectRaw('date, SUM(amount) as total')
-            ->groupBy('date')
-            ->pluck('total', 'date')
+            ->selectRaw('DATE(date) as date_only, SUM(amount) as total')
+            ->groupBy('date_only')
+            ->pluck('total', 'date_only')
             ->mapWithKeys(fn($v, $k) => [Carbon::parse($k)->format('Y-m-d') => (float) $v]);
 
         $expenses = Transaction::where('type', 'expense')
             ->where('date', '>=', Carbon::today()->subDays(29))
-            ->selectRaw('date, SUM(amount) as total')
-            ->groupBy('date')
-            ->pluck('total', 'date')
+            ->selectRaw('DATE(date) as date_only, SUM(amount) as total')
+            ->groupBy('date_only')
+            ->pluck('total', 'date_only')
             ->mapWithKeys(fn($v, $k) => [Carbon::parse($k)->format('Y-m-d') => (float) $v]);
 
         return [
