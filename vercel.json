@@ -3,8 +3,8 @@
     "outputDirectory": ".",
     "builds": [
         {
-            "src": "api/index.php",
-            "use": "vercel-php@0.7.3"
+            "src": "vercel_build/index.php",
+            "use": "vercel-php@0.6.1"
         },
         {
             "src": "public/**",
@@ -22,7 +22,7 @@
         },
         {
             "src": "/(.*)",
-            "dest": "/api/index.php"
+            "dest": "/vercel_build/index.php"
         }
     ],
     "env": {
