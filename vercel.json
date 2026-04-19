@@ -4,7 +4,7 @@
     "builds": [
         {
             "src": "vercel_build/index.php",
-            "use": "vercel-php@0.6.1"
+            "use": "vercel-php@0.7.3"
         },
         {
             "src": "public/**",
