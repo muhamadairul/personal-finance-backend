@@ -22,7 +22,7 @@ class AuthController extends Controller
      */
     private function photoDisk(): string
     {
-        return config('app.env') === 'production' ? 'supabase' : 'public';
+        return config('app.env') === 'production' ? 's3' : 'public';
     }
 
     /**
@@ -37,6 +37,11 @@ class AuthController extends Controller
         // If it's already a full URL (cloud storage), return directly
         if (str_starts_with($photoPath, 'http')) {
             return $photoPath;
+        }
+
+        $disk = $this->photoDisk();
+        if ($disk === 's3') {
+            return Storage::disk('s3')->url($photoPath);
         }
 
         // Local storage
@@ -294,14 +299,18 @@ class AuthController extends Controller
         // Delete old photo if exists
         if ($user->photo_url) {
             $oldPath = $user->photo_url;
-            // If it's a full URL (Supabase), extract just the path portion
             if (str_starts_with($oldPath, 'http')) {
-                $oldPath = parse_url($oldPath, PHP_URL_PATH);
-                // Extract path after /object/public/{bucket}/
-                $bucket = config('filesystems.disks.supabase.bucket', 'profiles');
-                $pos = strpos($oldPath, $bucket . '/');
-                if ($pos !== false) {
-                    $oldPath = substr($oldPath, $pos + strlen($bucket) + 1);
+                // If it's an old Supabase URL
+                if (str_contains($oldPath, '/object/public/')) {
+                    $pos = strpos($oldPath, '/object/public/');
+                    $parts = explode('/', substr($oldPath, $pos + 15));
+                    array_shift($parts); // remove bucket
+                    $oldPath = implode('/', $parts);
+                } 
+                // If it's a new S3 URL
+                else {
+                    $oldPath = parse_url($oldPath, PHP_URL_PATH);
+                    $oldPath = ltrim($oldPath, '/');
                 }
             }
             try {
@@ -314,16 +323,14 @@ class AuthController extends Controller
         // Store new photo
         $path = $request->file('photo')->store('profile-photos', $disk);
 
-        // Build the public URL
-        if ($disk === 'supabase') {
-            $bucket = config('filesystems.disks.supabase.bucket', 'profiles');
-            $supabaseUrl = rtrim(config('filesystems.disks.supabase.endpoint'), '/s3');
-            $supabaseUrl = str_replace('/storage/v1/s3', '', $supabaseUrl);
-            $baseUrl = rtrim(env('SUPABASE_URL'), '/');
-            $publicUrl = "{$baseUrl}/storage/v1/object/public/{$bucket}/{$path}";
-            $user->update(['photo_url' => $publicUrl]);
+        // We update the user with the path ONLY, and resolve it dynamically next time, 
+        // to simplify future storage migrations
+        $user->update(['photo_url' => $path]);
+
+        // Build the public URL for immediate response
+        if ($disk === 's3') {
+            $publicUrl = Storage::disk('s3')->url($path);
         } else {
-            $user->update(['photo_url' => $path]);
             $publicUrl = asset('storage/' . $path);
         }
 
@@ -341,10 +348,14 @@ class AuthController extends Controller
         if ($user->photo_url) {
             $oldPath = $user->photo_url;
             if (str_starts_with($oldPath, 'http')) {
-                $bucket = config('filesystems.disks.supabase.bucket', 'profiles');
-                $pos = strpos($oldPath, $bucket . '/');
-                if ($pos !== false) {
-                    $oldPath = substr($oldPath, $pos + strlen($bucket) + 1);
+                if (str_contains($oldPath, '/object/public/')) {
+                    $pos = strpos($oldPath, '/object/public/');
+                    $parts = explode('/', substr($oldPath, $pos + 15));
+                    array_shift($parts); // remove bucket
+                    $oldPath = implode('/', $parts);
+                } else {
+                    $oldPath = parse_url($oldPath, PHP_URL_PATH);
+                    $oldPath = ltrim($oldPath, '/');
                 }
             }
             try {
