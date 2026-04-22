@@ -10,6 +10,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -28,20 +29,25 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Teal,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
             ])
-            ->brandLogo(secure_asset('images/favicon.ico'))
-            ->brandName('Pencatat Keuangan')
+            ->brandLogo(secure_asset('images/icon.png'))
+            ->brandLogoHeight('3rem')
             ->favicon(secure_asset('images/favicon.ico'))
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([])
             ->sidebarCollapsibleOnDesktop()
             ->databaseNotifications()
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.login-style')->render(),
+                scopes: \Filament\Pages\Auth\Login::class,
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
