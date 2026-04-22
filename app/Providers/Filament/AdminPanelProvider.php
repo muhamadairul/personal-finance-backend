@@ -35,6 +35,8 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
             ])
+            ->brandLogo(secure_asset('images/favicon.ico'))
+            ->brandName('Pencatat Keuangan')
             ->favicon(secure_asset('images/favicon.ico'))
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([])
