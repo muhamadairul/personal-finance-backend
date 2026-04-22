@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
             ])
-            ->brandLogo(secure_asset('images/icon.png'))
+            ->brandLogo(fn () => view('filament.brand-logo'))
             ->brandLogoHeight('3rem')
             ->brandName('Pencatat Keuangan')
             ->favicon(secure_asset('images/favicon.ico'))
