@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
     {
         if (app()->environment('production')) {
             URL::forceScheme('https');
+
+            if (request()->server->has('HTTP_X_FORWARDED_PROTO')) {
+                request()->server->set('HTTPS', 'on');
+            }
         }
 
         SubscriptionLog::observe(SubscriptionLogObserver::class);
