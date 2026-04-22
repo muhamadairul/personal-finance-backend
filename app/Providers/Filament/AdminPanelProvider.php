@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->brandLogo(secure_asset('images/icon.png'))
             ->brandLogoHeight('3rem')
+            ->brandName('Pencatat Keuangan')
             ->favicon(secure_asset('images/favicon.ico'))
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([])
