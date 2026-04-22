@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionLog;
 use App\Models\User;
+use App\Notifications\GeneralNotification;
 use App\Services\FcmService;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
@@ -121,8 +122,38 @@ class XenditWebhookController extends Controller
 
         // Observer will auto-sync user is_pro & subscription_until
 
+        // Notify the user who paid
+        $this->notifyUser($user, $plan, $channel);
+
         // Notify admin(s)
         $this->notifyAdmins($user, $plan, $channel);
+    }
+
+    /**
+     * Send database notification + FCM push to the user who paid.
+     */
+    private function notifyUser(User $user, ?array $plan, string $channel): void
+    {
+        try {
+            $planName = $plan['name'] ?? 'Pro';
+            $title = '🎉 Upgrade Pro Berhasil!';
+            $body = "Selamat! Kamu berhasil upgrade ke paket {$planName} via {$channel}. Nikmati semua fitur premium!";
+
+            // 1. Save to database
+            $user->notify(new GeneralNotification($title, $body, 'subscription_paid', ['plan' => $planName, 'channel' => $channel]));
+
+            // 2. FCM push
+            if ($user->fcm_token) {
+                app(FcmService::class)->sendToDevice(
+                    $user->fcm_token,
+                    $title,
+                    $body,
+                    ['type' => 'subscription_paid'],
+                );
+            }
+        } catch (\Exception $e) {
+            report($e);
+        }
     }
 
     /**

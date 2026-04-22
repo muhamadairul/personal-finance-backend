@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Notifications\GeneralNotification;
 use App\Services\FcmService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -32,16 +33,25 @@ class SendTransactionReminder extends Command
         $failed = 0;
 
         foreach ($users as $user) {
+            $title = '📝 Jangan Lupa Catat Keuangan!';
+            $body = "Hai {$user->name}! Kamu belum mencatat pengeluaran hari ini. Yuk catat sekarang supaya keuanganmu tetap terkontrol 💰";
+
+            // 1. Save to database
+            $user->notify(new GeneralNotification($title, $body, 'transaction_reminder'));
+
+            // 2. Send FCM push
             $success = $fcmService->sendToDevice(
                 $user->fcm_token,
-                '📝 Jangan Lupa Catat Keuangan!',
-                "Hai {$user->name}! Kamu belum mencatat pengeluaran hari ini. Yuk catat sekarang supaya keuanganmu tetap terkontrol 💰",
+                $title,
+                $body,
                 ['type' => 'transaction_reminder'],
             );
 
             if ($success) {
+                $this->info("Notification sent to {$user->name} (email: {$user->email})");
                 $sent++;
             } else {
+                $this->info("Push failed for {$user->name} (email: {$user->email}), but saved to DB");
                 $failed++;
             }
         }

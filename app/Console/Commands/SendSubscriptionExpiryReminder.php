@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Notifications\GeneralNotification;
 use App\Services\FcmService;
 use Filament\Notifications\Notification;
 use Illuminate\Console\Command;
@@ -30,12 +31,18 @@ class SendSubscriptionExpiryReminder extends Command
             $daysLeft = (int) now()->diffInDays($user->subscription_until);
             $daysText = $daysLeft <= 0 ? 'hari ini' : "{$daysLeft} hari lagi";
 
-            // Notify user via push
+            $title = '🔔 Langganan Pro Akan Berakhir';
+            $body = "Langganan Pro-mu akan berakhir {$daysText}. Perpanjang sekarang agar tetap menikmati fitur premium!";
+
+            // 1. Save to database for user
+            $user->notify(new GeneralNotification($title, $body, 'subscription_expiry', ['days_left' => $daysLeft]));
+
+            // 2. Send FCM push to user
             if ($user->fcm_token) {
                 $fcmService->sendToDevice(
                     $user->fcm_token,
-                    '🔔 Langganan Pro Akan Berakhir',
-                    "Langganan Pro-mu akan berakhir {$daysText}. Perpanjang sekarang agar tetap menikmati fitur premium!",
+                    $title,
+                    $body,
                     ['type' => 'subscription_expiry', 'days_left' => (string) $daysLeft],
                 );
                 $sentUser++;
@@ -53,11 +60,18 @@ class SendSubscriptionExpiryReminder extends Command
             ->get();
 
         foreach ($expiredUsers as $user) {
+            $title = '⭐ Langganan Pro Telah Berakhir';
+            $body = 'Langganan Pro-mu telah berakhir. Upgrade kembali untuk menikmati fitur ekspor, budget tak terbatas, dan lainnya!';
+
+            // 1. Save to database for user
+            $user->notify(new GeneralNotification($title, $body, 'subscription_expired'));
+
+            // 2. Send FCM push to user
             if ($user->fcm_token) {
                 $fcmService->sendToDevice(
                     $user->fcm_token,
-                    '⭐ Langganan Pro Telah Berakhir',
-                    'Langganan Pro-mu telah berakhir. Upgrade kembali untuk menikmati fitur ekspor, budget tak terbatas, dan lainnya!',
+                    $title,
+                    $body,
                     ['type' => 'subscription_expired'],
                 );
                 $sentUser++;

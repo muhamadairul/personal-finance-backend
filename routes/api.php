@@ -18,6 +18,11 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/social', [AuthController::class, 'socialLogin']);
 
+// Forgot Password routes
+Route::post('/password/email', [\App\Http\Controllers\Api\ForgotPasswordController::class, 'sendOtp']);
+Route::post('/password/verify-otp', [\App\Http\Controllers\Api\ForgotPasswordController::class, 'verifyOtp']);
+Route::post('/password/reset', [\App\Http\Controllers\Api\ForgotPasswordController::class, 'reset']);
+
 // Vercel Cron trigger (secured by secret key)
 Route::get('/cron/trigger', function (Request $request) {
     $secret = config('app.cron_secret');
@@ -46,6 +51,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [\App\Http\Controllers\Api\NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
 
     // CRUD Resources
     Route::apiResource('transactions', TransactionController::class);
