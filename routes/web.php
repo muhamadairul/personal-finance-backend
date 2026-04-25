@@ -14,29 +14,40 @@ Route::get('/dev-logs', function () {
         abort(403, 'Unauthorized. Please provide the correct key.');
     }
 
-    $logFile = storage_path('logs/laravel.log');
-
     // If request wants JSON, return the tail of the log file
     if (request()->wantsJson() || request()->ajax()) {
-        if (!file_exists($logFile)) {
-            return response()->json(['log' => 'Log file not found.']);
+        try {
+            $logs = \App\Models\ApiLog::with('user')->latest()->take(30)->get();
+            $logContent = '';
+            
+            foreach ($logs->reverse() as $log) {
+                $user = $log->user ? $log->user->name : 'Guest';
+                $date = $log->created_at->format('Y-m-d H:i:s');
+                $statusStr = $log->status_code >= 400 ? "[ERROR {$log->status_code}]" : "[OK {$log->status_code}]";
+                
+                $logContent .= "[{$date}] {$statusStr} {$log->method} {$log->url} | User: {$user} | IP: {$log->ip_address} | Time: {$log->duration_ms}ms\n";
+                if (!empty($log->payload)) {
+                    $logContent .= "Payload: " . json_encode($log->payload) . "\n";
+                }
+                if (!empty($log->response)) {
+                    // Limit response size in logs to prevent huge payloads crashing the browser
+                    $respStr = json_encode($log->response);
+                    if (strlen($respStr) > 500) {
+                        $respStr = substr($respStr, 0, 500) . '... (truncated)';
+                    }
+                    $logContent .= "Response: " . $respStr . "\n";
+                }
+                $logContent .= str_repeat('-', 80) . "\n";
+            }
+
+            if ($logs->isEmpty()) {
+                $logContent = "No API logs found in the database yet.";
+            }
+
+            return response()->json(['log' => $logContent]);
+        } catch (\Exception $e) {
+            return response()->json(['log' => "Error fetching logs from database: " . $e->getMessage()]);
         }
-
-        $fileSize = filesize($logFile);
-        $readSize = min($fileSize, 100000); // Read up to last 100KB to prevent memory issues
-        
-        $file = fopen($logFile, 'r');
-        fseek($file, -$readSize, SEEK_END);
-        $logContent = fread($file, $readSize);
-        fclose($file);
-
-        // Optional: ensure we start at a newline
-        $pos = strpos($logContent, "\n");
-        if ($pos !== false && $readSize === 100000) {
-            $logContent = substr($logContent, $pos + 1);
-        }
-
-        return response()->json(['log' => $logContent]);
     }
 
     // Return simple HTML page with JS polling
