@@ -99,10 +99,13 @@ class FcmService
     {
         return Cache::remember('fcm_access_token', 3000, function () {
             try {
-                $credentials = json_decode(file_get_contents($this->credentialsPath), true);
+                $credentials = $this->loadCredentials();
 
                 if (!$credentials || !isset($credentials['private_key'])) {
-                    Log::error('FCM: Invalid service account credentials file');
+                    Log::error('FCM: Invalid service account credentials', [
+                        'has_env' => !empty(env('FIREBASE_CREDENTIALS_JSON')),
+                        'file_exists' => file_exists($this->credentialsPath),
+                    ]);
                     return null;
                 }
 
@@ -153,6 +156,43 @@ class FcmService
                 return null;
             }
         });
+    }
+
+    /**
+     * Load Firebase service account credentials.
+     * Priority: 1) FIREBASE_CREDENTIALS_JSON env var (base64-encoded)
+     *           2) File path from config
+     */
+    private function loadCredentials(): ?array
+    {
+        // 1. Try env var first (for cloud deployments where file isn't available)
+        $envJson = env('FIREBASE_CREDENTIALS_JSON');
+        if (!empty($envJson)) {
+            // Support both raw JSON and base64-encoded JSON
+            $decoded = base64_decode($envJson, true);
+            if ($decoded !== false) {
+                $credentials = json_decode($decoded, true);
+                if ($credentials && isset($credentials['private_key'])) {
+                    return $credentials;
+                }
+            }
+
+            // Try as raw JSON
+            $credentials = json_decode($envJson, true);
+            if ($credentials && isset($credentials['private_key'])) {
+                return $credentials;
+            }
+
+            Log::warning('FCM: FIREBASE_CREDENTIALS_JSON env var present but invalid');
+        }
+
+        // 2. Fall back to file
+        if (file_exists($this->credentialsPath)) {
+            return json_decode(file_get_contents($this->credentialsPath), true);
+        }
+
+        Log::error('FCM: No credentials found (no env var, no file at: ' . $this->credentialsPath . ')');
+        return null;
     }
 
     /**

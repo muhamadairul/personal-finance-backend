@@ -123,6 +123,12 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        'database' => [
+            'driver' => 'custom',
+            'via'    => \App\Logging\DatabaseLogChannel::class,
+            'level'  => env('LOG_LEVEL', 'debug'),
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
