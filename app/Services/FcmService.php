@@ -103,7 +103,7 @@ class FcmService
 
                 if (!$credentials || !isset($credentials['private_key'])) {
                     Log::error('FCM: Invalid service account credentials', [
-                        'has_env' => !empty(env('FIREBASE_CREDENTIALS_JSON')),
+                        'has_config' => !empty(config('services.firebase.credentials_json')),
                         'file_exists' => file_exists($this->credentialsPath),
                     ]);
                     return null;
@@ -165,8 +165,9 @@ class FcmService
      */
     private function loadCredentials(): ?array
     {
-        // 1. Try env var first (for cloud deployments where file isn't available)
-        $envJson = env('FIREBASE_CREDENTIALS_JSON');
+        // 1. Try config first (for cloud deployments where file isn't available)
+        // Using config() instead of env() because env() returns null when config is cached
+        $envJson = config('services.firebase.credentials_json');
         if (!empty($envJson)) {
             // Support both raw JSON and base64-encoded JSON
             $decoded = base64_decode($envJson, true);

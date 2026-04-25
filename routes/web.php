@@ -63,7 +63,8 @@ Route::get('/dev-logs', function () {
                 $credPath = config('services.firebase.credentials');
                 $info[] = "Credentials File: " . $credPath;
                 $info[] = "Credentials File Exists: " . (file_exists($credPath) ? 'YES' : 'NO');
-                $info[] = "FIREBASE_CREDENTIALS_JSON env: " . (!empty(env('FIREBASE_CREDENTIALS_JSON')) ? 'SET (' . strlen(env('FIREBASE_CREDENTIALS_JSON')) . ' chars)' : 'NOT SET');
+                $credJson = config('services.firebase.credentials_json');
+                $info[] = "FIREBASE_CREDENTIALS_JSON: " . (!empty($credJson) ? 'SET (' . strlen($credJson) . ' chars)' : 'NOT SET');
                 $info[] = "";
                 $info[] = "=== Storage (S3/Cloud) ===";
                 $info[] = "AWS Bucket: " . config('filesystems.disks.s3.bucket');
