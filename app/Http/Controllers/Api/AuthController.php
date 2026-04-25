@@ -296,6 +296,15 @@ class AuthController extends Controller
         $user = $request->user();
         $disk = $this->photoDisk();
 
+        Log::info('uploadPhoto: disk=' . $disk . ', hasFile=' . ($request->hasFile('photo') ? 'yes' : 'no'));
+
+        if (!$request->hasFile('photo') || !$request->file('photo')->isValid()) {
+            Log::error('uploadPhoto: No valid photo file received');
+            return response()->json([
+                'message' => 'File foto tidak valid atau tidak diterima.',
+            ], 422);
+        }
+
         // Delete old photo if exists
         if ($user->photo_url) {
             $oldPath = $user->photo_url;
@@ -323,6 +332,15 @@ class AuthController extends Controller
         // Store new photo
         $path = $request->file('photo')->store('profile-photos', $disk);
 
+        Log::info('uploadPhoto: stored path=' . $path);
+
+        if (!$path) {
+            Log::error('uploadPhoto: Failed to store photo to disk=' . $disk);
+            return response()->json([
+                'message' => 'Gagal menyimpan foto. Silakan coba lagi.',
+            ], 500);
+        }
+
         // We update the user with the path ONLY, and resolve it dynamically next time, 
         // to simplify future storage migrations
         $user->update(['photo_url' => $path]);
@@ -333,6 +351,8 @@ class AuthController extends Controller
         } else {
             $publicUrl = asset('storage/' . $path);
         }
+
+        Log::info('uploadPhoto: publicUrl=' . $publicUrl);
 
         return response()->json([
             'data'    => $this->userData($user, $publicUrl),
