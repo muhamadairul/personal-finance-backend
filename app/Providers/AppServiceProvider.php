@@ -35,5 +35,20 @@ class AppServiceProvider extends ServiceProvider
         }
 
         SubscriptionLog::observe(SubscriptionLogObserver::class);
+
+        // Capture all log messages to database (works with any LOG_CHANNEL,
+        // including Laravel Cloud's laravel-cloud-socket)
+        \Illuminate\Support\Facades\Log::listen(function (\Illuminate\Log\Events\MessageLogged $event) {
+            try {
+                \App\Models\AppLog::create([
+                    'level'   => $event->level,
+                    'channel' => 'app',
+                    'message' => $event->message,
+                    'context' => !empty($event->context) ? $event->context : null,
+                ]);
+            } catch (\Throwable $e) {
+                // Silently fail — logging should never break the app
+            }
+        });
     }
 }
